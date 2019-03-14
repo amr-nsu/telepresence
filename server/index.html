@@ -1,0 +1,49 @@
+<!DOCTYPE HTML>
+<html>
+ <head>
+  <meta charset="utf-8">
+  <title>Тег BUTTON</title>
+    <script>    
+      var aparol=['test1234'];
+      function a()
+      {
+          var pass = prompt('Пароль:'); 
+          arr = aparol;
+          elem = pass;
+          if (arr.indexOf(elem)!=-1){
+            alert("Yes");
+            document.location.replace("index_Andrew.html")}
+    }
+      function m()
+      {
+          var pass = prompt('Пароль:'); 
+          arr = aparol;
+          elem = pass;
+          if (arr.indexOf(elem)!=-1){
+            alert("Yes");
+            document.location.replace("index_mobile.html")}
+    }
+      function d()
+      {
+          var pass = prompt('Пароль:'); 
+          arr = aparol;
+          elem = pass;
+          if (arr.indexOf(elem)!=-1){
+            alert("Yes");
+            document.location.replace("index_Denios.html")}
+    }
+    </script>
+ </head>
+ <body>
+ <p><button onclick="a()">Andrew</button></p>
+ <p><button onclick="d()">Denios</button></p>
+ <p><button onclick="m()">For mobile</button></p>
+ 
+ <!-- <p><a href="index_Andrew.html">Andrew</a></p>
+ <a href="index_Denios.html"></a>
+ <p>
+ <a href="index_mobile.html"></a>
+ </p>-->
+ </body>
+</html>
+
