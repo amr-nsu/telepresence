@@ -7,7 +7,7 @@ from os import curdir, sep
 import io
 import numpy as np
 import cv2, os
-#from PIL import Image
+from PIL import Image
 
 PAGE="""\
 <html>
@@ -20,6 +20,47 @@ PAGE="""\
 </body>
 </html>
 """
+def auto(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)                        
+    cascadePath="haarcascade_frontalface_default.xml"
+    faceCascade = cv2.CascadeClassifier(cascadePath)
+    faces = faceCascade.detectMultiScale(
+                           gray, 1.3 , 5
+                        )
+                        #print(faces)
+                       
+    cmd = None                   
+    for (x, y, w, h) in faces:                  
+        cv2.rectangle(frame, (x,y), (x+w,y+h), (0,255,0), 2)
+        s = w * h
+        x_n, y_n = x, y
+        x_ref = 320 / 2
+        s_ref = 30000 / 4
+        print(s, s_ref)
+        if (abs(s - s_ref) > 5000 / 2):
+            if (s > s_ref):
+                cmd = 'b' #HTTPHandler.ser.write('b'.encode())
+            else:
+                cmd = 'f' #HTTPHandler.ser.write('f'.encode())
+        elif (abs(x_ref - x_n - w / 2) > 64 / 2):
+            if (x_n > x_ref):
+                cmd = 'r' #HTTPHandler.ser.write('r'.encode())
+            else:
+                cmd = 'l' #HTTPHandler.ser.write('l'.encode())
+        else:
+            cmd = 's'    #HTTPHandler.ser.write('s'.encode())    
+        
+    return cmd  
+
+global mode_auto
+mode_auto = False 
+
+global ser
+ser = serial.Serial('/dev/ttyACM0', 9600)
+
+
+global counter
+counter = 0
 
 class StreamingOutput(object):
     def __init__(self):
@@ -28,6 +69,8 @@ class StreamingOutput(object):
         self.clients = []
 
     def write(self, buf):
+        global counter
+        counter += 1
         died = []
         if buf.startswith(b'\xff\xd8'):
             # New frame, send old frame to all connected clients
@@ -36,46 +79,20 @@ class StreamingOutput(object):
                 self.frame.seek(0)
                 data = self.frame.read(size)
 
-                frame = np.fromstring(self.frame.getvalue(), dtype=np.uint8)
-                frame = cv2.imdecode(frame, 1)
-                cv2.imshow(frame)
-		                
-                """ret, img = cap.read()
-    
-        
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                cascadePath = "haarcascade_frontalface_default.xml"
-                faceCascade = cv2.CascadeClassifier(cascadePath)
-                faces = faceCascade.detectMultiScale(
-                gray, 1.3 , 5
-                )
-    
-                for (x, y, w, h) in faces:
-        
-                cv2.rectangle(img, (x,y), (x+w,y+h), (0,255,0), 2)
-        
-                s = w * h
-                x_n, y_n = x, y
-                if x_prev is not None:
-         
-    
-                    if (abs(s - s_prev) > 15000):
-                        if (s > s_prev):
-                            print("b")
-                        else:
-                            print("f")
-                    elif (abs(x_prev - x_n) > 25):
-                        if (x_n > x_prev):
-                            print("r")
-                        else:
-                            print("l")
-                    else:
-                        print("s")
+                global mode_auto
+                print("mode", mode_auto)
                 
-            
-      
-                x_prev, y_prev, s_prev = x, y, s
-"""
+                if mode_auto and counter % 10 == 0:              
+                    frame = np.fromstring(self.frame.getvalue(), dtype=np.uint8)
+                    frame = cv2.imdecode(frame, 1)
+                    frame = cv2.resize(frame, (0,0), fx=0.5, fy=0.5)
+ 
+                    kuda = auto(frame)
+                    if kuda is not None:
+                        print("kuda:", kuda)
+                        ser.write(kuda.encode())
+#                    cv2.imshow(frame)
+                       
                 self.frame.seek(0)
                 with self.lock:
                     for client in self.clients:
@@ -84,7 +101,7 @@ class StreamingOutput(object):
                             client.send_header('Content-Type', 'image/jpeg')
                             client.send_header('Content-Length', size)
                             client.end_headers()
-                            client.wfile.write(data)
+                            client.wfile.write(data)#bilo data
                             client.wfile.write(b'\r\n')
                         except Exception as e:
                             died.append(client)
@@ -113,7 +130,7 @@ class StreamingOutput(object):
 
 
 class HTTPHandler(server.BaseHTTPRequestHandler):
-    ser = serial.Serial('/dev/ttyS0', 9600)
+#    ser = serial.Serial('/dev/ttyACM0', 9600)
 
     def do_GET(self):
         if self.path == '/':
@@ -140,7 +157,12 @@ class HTTPHandler(server.BaseHTTPRequestHandler):
             self.send_response(200)
             self.end_headers()
             cmd = self.path.split('cmd=')[1][0]
-            HTTPHandler.ser.write(cmd)
+            if (cmd=='a'):
+                global mode_auto
+                mode_auto = not mode_auto
+            else:
+                #global ser
+                ser.write(cmd.encode())
 
 
 
